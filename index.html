@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <title>Слово из частиц + звук + видео + вебкамера</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  
+  <!-- Предзагрузка важных ресурсов -->
+  <link rel="preload" href="p5.min.js" as="script">
+  <link rel="preload" href="p5.sound.min.js" as="script">
+  <link rel="preconnect" href="https://2061d69f-2e4b-4fcf-92cd-e3ece77c04a5.selstorage.ru">
+
+  <!-- p5.js и дополнения -->
+  <script src="p5.min.js"></script>
+  <script src="p5.sound.min.js"></script>
+  <script src="stats.min.js"></script>
+
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background: rgb(5, 1, 23);
+      width: 100vw;
+      height: 100vh;
+      cursor: none;
+      font-family: sans-serif;
+    }
+
+    canvas {
+      display: block;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 1;
+      background: transparent !important;
+    }
+
+    video.overlay {
+      position: fixed;
+      top: -15%;
+      left: -15%;
+      width: 130vw;
+      height: 130vh;
+      object-fit: cover;
+      display: none;
+      opacity: 0;
+      z-index: 10;
+      pointer-events: none;
+      transition: opacity 0.1s linear;
+    }
+
+    /* Лоадер */
+    .loader {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgb(5, 1, 23);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 100;
+      color: white;
+      font-size: 24px;
+    }
+  </style>
+</head>
+<body>
+  <!-- Лоадер -->
+  <div class="loader" id="loader">Загрузка...</div>
+
+  <!-- Видеослой -->
+  <video id="overlayVideo" class="overlay" preload="auto" playsinline webkit-playsinline muted crossorigin="anonymous">
+    <source src="https://2061d69f-2e4b-4fcf-92cd-e3ece77c04a5.selstorage.ru/Alsu-kouki-amri/ARHIV%20OBLAKO/Google-earth.webm" type="video/webm" />
+    Ваш браузер не поддерживает видео.
+  </video>
+
+<script>
+  'use strict';
+
+  // Константы и глобальные переменные
+  const words = ['еще рано', 'завтра', 'успею'];
+  const NUM_PARTICLES = 1800;
+  const SPHERE_RADIUS = 200;
+  const SAMPLE_FACTOR = 0.21;
+  const TEXT_SIZE = 100;
+
+  let particles = [];
+  let wordPoints = [];
+  let wordIndex = 0;
+
+  let font;
+  let textures = [];
+  let resourcesLoaded = 0;
+  const totalResources = 8; // Шрифт + 5 текстур + 2 звука
+
+  let cam;
+  let stats;
+
+  let soundLoop, soundGather;
+  let overlayVideo;
+  let webcam;
+
+  let gathering = false;
+  let gatheringStartTime = 0;
+  let videoOpacity = 0;
+  let videoFadeIn = false;
+  let videoStarted = false;
+  let videoPlayedThisHold = false;
+  let showWebcam = false;
+  let eKeyPressed = false;
+  let videoReady = false;
+
+  // ========== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ==========
+
+  // Быстрая функция для синуса с кешированием
+  function fastSin(angle) {
+    const key = angle.toFixed(2);
+    if (!window.cachedSin) window.cachedSin = {};
+    if (!window.cachedSin[key]) {
+      window.cachedSin[key] = Math.sin(angle);
+    }
+    return window.cachedSin[key];
+  }
+
+  // Быстрая функция для косинуса с кешированием
+  function fastCos(angle) {
+    const key = angle.toFixed(2);
+    if (!window.cachedCos) window.cachedCos = {};
+    if (!window.cachedCos[key]) {
+      window.cachedCos[key] = Math.cos(angle);
+    }
+    return window.cachedCos[key];
+  }
+
+  // Сброс позиции камеры
+  function resetCamera() {
+    if (cam) {
+      cam.setPosition(0, 0, 600);
+      cam.lookAt(0, 0, 0);
+    }
+  }
+
+  // Переключение полноэкранного режима
+  function toggleFullscreen() {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(err => {
+        console.error(`Ошибка при включении полноэкранного режима: ${err.message}`);
+      });
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      }
+    }
+  }
+
+  // Обновляем точки для частиц, формирующих слово
+  function updateWordPoints(text) {
+    if (!font) return;
+    
+    const bounds = font.textBounds(text, 0, 0, TEXT_SIZE);
+    const pts = font.textToPoints(text, -bounds.w / 2, bounds.h / 2, TEXT_SIZE, {
+      sampleFactor: SAMPLE_FACTOR
+    });
+    wordPoints = particles.map((_, i) => {
+      const pt = pts[i % pts.length];
+      return createVector(pt.x, pt.y, 0);
+    });
+  }
+
+  // Получаем позицию частицы на "плавающей" сфере
+  function getFloatingSpherePos(p) {
+    p.theta += p.speed;
+    const floatY = p.isPaper ? fastSin(frameCount * 0.02 + p.rotOffset) * 2 : 0;
+    const offset = p.baseOffset + fastSin(frameCount * 0.01 + p.rotOffset) * 10;
+    const r = SPHERE_RADIUS + offset;
+
+    return createVector(
+      r * fastSin(p.phi) * fastCos(p.theta),
+      r * fastSin(p.phi) * fastSin(p.theta) + floatY,
+      r * fastCos(p.phi)
+    );
+  }
+
+  // Отрисовка "бумажной" частицы с прозрачным фоном
+  function drawPaper(p) {
+    push();
+    rotateY(p.theta + fastSin(frameCount * 0.01 + p.rotOffset) * 0.5);
+    rotateX(p.rotOffset + fastCos(frameCount * 0.02 + p.rotOffset) * 0.5);
+    rotateZ(p.rotOffset + fastSin(frameCount * 0.02 + p.rotOffset * 0.1) * 0.3);
+    noStroke();
+    
+    tint(255, 255, 255, p.opacity);
+    texture(p.tex);
+    plane(p.size, p.size * 1.4);
+    noTint();
+    pop();
+  }
+
+  // Управление видео
+  function updateVideoOverlay() {
+    if (!videoReady) return;
+    
+    if (gathering && millis() - gatheringStartTime > 4000 && !videoPlayedThisHold) {
+      videoPlayedThisHold = true;
+      overlayVideo.style.display = 'block';
+      overlayVideo.play().catch(e => console.log('Ошибка воспроизведения:', e));
+      videoStarted = true;
+      videoFadeIn = true;
+    }
+
+    if (videoFadeIn && videoOpacity < 1) {
+      videoOpacity += 0.01;
+      overlayVideo.style.opacity = videoOpacity;
+    }
+
+    if (videoStarted && overlayVideo.ended) {
+      overlayVideo.style.display = 'none';
+      videoStarted = false;
+      videoFadeIn = false;
+      videoOpacity = 0;
+      showWebcam = true;
+    }
+  }
+
+  // Обработчик загрузки ресурсов
+  function resourceLoaded() {
+    resourcesLoaded++;
+    const progress = Math.floor((resourcesLoaded / totalResources) * 100);
+    document.getElementById('loader').textContent = `Загрузка ${progress}%`;
+    
+    if (resourcesLoaded >= totalResources) {
+      setTimeout(() => {
+        document.getElementById('loader').style.opacity = '0';
+        setTimeout(() => {
+          document.getElementById('loader').style.display = 'none';
+        }, 500);
+      }, 500);
+    }
+  }
+
+  // ========== ОСНОВНЫЕ ФУНКЦИИ P5.JS ==========
+
+  // Предзагрузка ресурсов
+  function preload() {
+    // Загрузка шрифта
+    font = loadFont('Inter-V.ttf', () => resourceLoaded(), () => console.error('Ошибка загрузки шрифта'));
+    
+    // Загрузка текстур
+    textures = Array.from({ length: 5 }, (_, i) => {
+      return loadImage(`paper${i + 1}.png`, 
+        () => resourceLoaded(), 
+        () => console.error(`Ошибка загрузки текстуры paper${i + 1}.png`));
+    });
+    
+    // Загрузка звуков
+    soundLoop = loadSound(
+      'monotonnyiy-shum-na-vertoletnoy-ploschadke.wav', 
+      () => resourceLoaded(),
+      () => console.error('Ошибка загрузки звука loop')
+    );
+    
+    soundGather = loadSound(
+      'shurshaschiy-list-bumagi.wav', 
+      () => resourceLoaded(),
+      () => console.error('Ошибка загрузки звука gather')
+    );
+    
+    // Предзагрузка видео
+    overlayVideo = document.getElementById('overlayVideo');
+    overlayVideo.load();
+    
+    overlayVideo.addEventListener('loadedmetadata', () => {
+      console.log('Метаданные видео загружены');
+      resourceLoaded();
+    });
+    
+    overlayVideo.addEventListener('canplaythrough', () => {
+      console.log('Видео можно воспроизводить без буферизации');
+      videoReady = true;
+    });
+    
+    overlayVideo.addEventListener('error', () => {
+      console.error('Ошибка загрузки видео');
+      resourceLoaded();
+    });
+  }
+
+  // Инициализация сцены и объектов
+  function setup() {
+    setAttributes('alpha', true);
+    blendMode(BLEND);
+    createCanvas(windowWidth, windowHeight, WEBGL);
+    angleMode(RADIANS);
+    textureMode(NORMAL);
+
+    stats = new Stats();
+    stats.showPanel(0);
+    document.body.appendChild(stats.dom);
+
+    cam = createCamera();
+    resetCamera();
+
+    // Создаем частицы с параметрами
+    for (let i = 0; i < NUM_PARTICLES; i++) {
+      const theta = random(TWO_PI);
+      const phi = Math.acos(1 - 2 * random());
+      const baseOffset = random(-30, 30);
+      const r = SPHERE_RADIUS + baseOffset;
+
+      const isPaper = i < NUM_PARTICLES * 0.008;
+      particles.push({
+        pos: createVector(),
+        theta,
+        phi,
+        baseOffset,
+        speed: random(0.001, 0.005),
+        target: createVector(),
+        size: isPaper ? random(25, 45) : random(0.01, 1.8),
+        tex: isPaper ? random(textures) : null,
+        isPaper,
+        opacity: 255,
+        rotOffset: random(TWO_PI)
+      });
+    }
+
+    updateWordPoints(words[wordIndex]);
+
+    // Запускаем фоновой звук
+    if (!soundLoop.isPlaying()) {
+      soundLoop.setLoop(true);
+      soundLoop.setVolume(0.1);
+      soundLoop.play();
+    }
+
+    // Инициализация вебкамеры
+    webcam = createCapture(VIDEO);
+    webcam.size(windowWidth, windowHeight);
+    webcam.hide();
+  }
+
+  // Основной рендеринг сцены
+  function draw() {
+    stats.begin();
+    clear(0, 0, 0, 0);
+    
+    if (!videoReady) return;
+    
+    // Отрисовка вебкамеры, если включена
+    if (showWebcam) {
+      push();
+      translate(-width / 2, -height / 2);
+      image(webcam, 0, 0, width, height);
+      pop();
+    }
+
+    const currentVideoOpacity = 1 - videoOpacity;
+    const lerpFactor = 0.05;
+    const isGathering = gathering;
+    
+    // Обновление и отрисовка частиц
+    for (let i = 0, len = particles.length; i < len; i++) {
+      const p = particles[i];
+      const targetPos = isGathering ? wordPoints[i] : getFloatingSpherePos(p);
+      p.target.set(targetPos);
+      p.pos.lerp(p.target, 0.1);
+
+      let targetOpacity = 255;
+      if (isGathering && !p.isPaper && p.pos.dist(p.target) < 10) {
+        targetOpacity = 0;
+      }
+      targetOpacity *= currentVideoOpacity;
+      p.opacity = lerp(p.opacity, targetOpacity, lerpFactor);
+
+      push();
+      translate(p.pos);
+      noStroke();
+
+      if (isGathering && i < wordPoints.length) {
+        fill(255 * currentVideoOpacity);
+        ellipse(0, 0, 3, 3);
+      } else if (p.isPaper) {
+        drawPaper(p);
+      } else {
+        fill(200, p.opacity);
+        ellipse(0, 0, p.size * 2, p.size * 2);
+      }
+
+      pop();
+    }
+
+    updateVideoOverlay();
+    stats.end();
+  }
+
+  // ========== ОБРАБОТЧИКИ СОБЫТИЙ ==========
+
+  function mousePressed() {
+    if (showWebcam) return;
+
+    gathering = true;
+    gatheringStartTime = millis();
+    videoStarted = false;
+    videoPlayedThisHold = false;
+
+    let newIndex;
+    do {
+      newIndex = floor(random(words.length));
+    } while (newIndex === wordIndex);
+    wordIndex = newIndex;
+
+    updateWordPoints(words[wordIndex]);
+
+    if (!soundGather.isPlaying()) {
+      soundGather.setVolume(0.4);
+      soundGather.play();
+    }
+
+    overlayVideo.pause();
+    overlayVideo.style.display = 'none';
+    videoFadeIn = false;
+    videoOpacity = 0;
+    showWebcam = false;
+  }
+
+  function mouseReleased() {
+    gathering = false;
+    showWebcam = false;
+
+    if (videoStarted) {
+      overlayVideo.pause();
+      overlayVideo.style.display = 'none';
+    }
+
+    videoStarted = false;
+    videoFadeIn = false;
+    videoOpacity = 0;
+
+    if (soundGather.isPlaying()) soundGather.stop();
+  }
+
+  function windowResized() {
+    resizeCanvas(windowWidth, windowHeight);
+  }
+
+  function keyPressed() {
+    if (keyCode === 32) { // Пробел
+      toggleFullscreen();
+      return false;
+    }
+    
+    if (keyCode === 70) { // F
+      location.reload();
+      return false;
+    }
+  }
+</script>
+</body>
+</html>
