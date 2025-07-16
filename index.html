@@ -13,8 +13,7 @@
   <!-- p5.js и дополнения -->
   <script src="p5.min.js"></script>
   <script src="p5.sound.min.js"></script>
-  <script src="stats.min.js"></script>
-
+  
   <style>
     html, body {
       margin: 0;
@@ -25,7 +24,7 @@
       height: 100vh;
       cursor: none;
       font-family: sans-serif;
-    }
+    } 
 
     canvas {
       display: block;
@@ -115,9 +114,9 @@
   'приложение без действия', 'в ожидании цели', 'не назначено событие', 'ожидаю запуска',
   'вне миссии', 'ещё не дорос до задачи', 'завис в прошлом намерении'];
   const NUM_PARTICLES = 1800;
-  const SPHERE_RADIUS = 200;
-  const SAMPLE_FACTOR = 0.35;
-  const TEXT_SIZE = 60;
+  const SPHERE_RADIUS = 250;
+  const SAMPLE_FACTOR = 0.34;
+  const TEXT_SIZE = 48;
 
   let particles = [];
   let wordPoints = [];
@@ -281,7 +280,7 @@
     font = loadFont('Inter-V.ttf', () => resourceLoaded(), () => console.error('Ошибка загрузки шрифта'));
     
     // Загрузка текстур
-    textures = Array.from({ length: 5 }, (_, i) => {
+    textures = Array.from({ length: 8 }, (_, i) => {
       return loadImage(`paper${i + 1}.png`, 
         () => resourceLoaded(), 
         () => console.error(`Ошибка загрузки текстуры paper${i + 1}.png`));
@@ -295,7 +294,7 @@
     );
     
     soundGather = loadSound(
-      'shurshaschiy-list-bumagi.wav', 
+      'monotonnyiy-shum-na-vertoletnoy-ploschadke.wav', 
       () => resourceLoaded(),
       () => console.error('Ошибка загрузки звука gather')
     );
@@ -328,9 +327,6 @@
     angleMode(RADIANS);
     textureMode(NORMAL);
 
-    stats = new Stats();
-    stats.showPanel(0);
-    document.body.appendChild(stats.dom);
 
     cam = createCamera();
     resetCamera();
@@ -338,7 +334,7 @@
     // Создаем частицы с параметрами
     for (let i = 0; i < NUM_PARTICLES; i++) {
       const theta = random(TWO_PI);
-      const phi = Math.acos(1 - 2 * random());
+      const phi = Math.acos(1 - 1 * random());
       const baseOffset = random(-30, 30);
       const r = SPHERE_RADIUS + baseOffset;
 
@@ -348,9 +344,9 @@
         theta,
         phi,
         baseOffset,
-        speed: random(0.001, 0.005),
+        speed: random(0.002, 0.01),
         target: createVector(),
-        size: isPaper ? random(25, 45) : random(0.01, 1.8),
+        size: isPaper ? random(25, 45) : random(0.55, 2.9),
         tex: isPaper ? random(textures) : null,
         isPaper,
         opacity: 255,
@@ -363,7 +359,7 @@
     // Запускаем фоновой звук
     if (!soundLoop.isPlaying()) {
       soundLoop.setLoop(true);
-      soundLoop.setVolume(0.1);
+      soundLoop.setVolume(0.3);
       soundLoop.play();
     }
 
@@ -375,7 +371,6 @@
 
   // Основной рендеринг сцены
   function draw() {
-    stats.begin();
     clear(0, 0, 0, 0);
     
     if (!videoReady) return;
@@ -424,7 +419,7 @@
     }
 
     updateVideoOverlay();
-    stats.end();
+
   }
 
   // ========== ОБРАБОТЧИКИ СОБЫТИЙ ==========
@@ -446,7 +441,7 @@
     updateWordPoints(words[wordIndex]);
 
     if (!soundGather.isPlaying()) {
-      soundGather.setVolume(0.4);
+      soundGather.setVolume(0.05);
       soundGather.play();
     }
 
