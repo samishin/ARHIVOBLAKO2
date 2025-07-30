@@ -7,7 +7,7 @@
         body {
             margin: 0;
             overflow: hidden;
-            background: radial-gradient(circle at center, #3e352b 0%, #03000f 50%);
+            background: radial-gradient(circle at center, #3d3b3a 0%, #03000f 70%);
         }
         canvas { 
             display: block; 
@@ -17,8 +17,8 @@
             position: fixed;
             top: 0; 
             left: 0;
-            width: 110%; 
-            height: 110%;
+            width: 115%; 
+            height: 115%;
             object-fit: cover;
             opacity: 0;
             transition: opacity 1.5s cubic-bezier(0.4, 0, 0.2, 1);
@@ -42,7 +42,7 @@
     <canvas id="canvas"></canvas>
     <canvas id="textCanvas"></canvas>
     <video id="video" muted crossorigin="anonymous" preload="auto">
-        <source src="https://2061d69f-2e4b-4fcf-92cd-e3ece77c04a5.selstorage.ru/Alsu-kouki-amri/ARHIV%20OBLAKO/Google-earth.webm" type="video/webm">
+        <source src="https://2061d69f-2e4b-4fcf-92cd-e3ece77c04a5.selstorage.ru/Alsu-kouki-amri/ARHIV%20OBLAKO/Google-earth2.webm" type="video/webm">
     </video>
     <video id="webcam" autoplay muted playsinline></video>
     <div id="stats"></div>
@@ -54,10 +54,10 @@
             // ===== КОНФИГУРАЦИЯ =====
             const CONFIG = {
                 TEXTS: ["ОБЛАКО", "ДОКУМЕНТ", "ПАПКА", "ФАЙЛ", "ДАННЫЕ"],
-                PARTICLE_COUNT: 3000,
-                PAPER_COUNT: 8,
-                SPHERE_RADIUS: 200,
-                TEXT_SIZE: 80,
+                PARTICLE_COUNT: 2200,
+                PAPER_COUNT: 10,
+                SPHERE_RADIUS: 240,
+                TEXT_SIZE: 50,
                 LERP_SPEED: 0.07,
                 VIDEO_DELAY: 3000,
                 PAPER_SPEED: 0.8,
@@ -92,7 +92,7 @@
             // ===== THREE.JS ОБЪЕКТЫ =====
             const scene = new THREE.Scene();
             const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 5000);
-            camera.position.z = 300;
+            camera.position.z = 320;
             
             const renderer = new THREE.WebGLRenderer({
                 canvas: document.getElementById('canvas'),
