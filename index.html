@@ -42,7 +42,7 @@
     <canvas id="canvas"></canvas>
     <canvas id="textCanvas"></canvas>
     <video id="video" muted crossorigin="anonymous" preload="auto">
-        <source src="https://2061d69f-2e4b-4fcf-92cd-e3ece77c04a5.selstorage.ru/Alsu-kouki-amri/ARHIV%20OBLAKO/Google-earth2.webm" type="video/webm">
+        <source src="https://2061d69f-2e4b-4fcf-92cd-e3ece77c04a5.selstorage.ru/Alsu-kouki-amri/ARHIV%20OBLAKO/Google-earth.webm" type="video/webm">
     </video>
     <video id="webcam" autoplay muted playsinline></video>
     <div id="stats"></div>
@@ -53,10 +53,10 @@
         (function() {
             // ===== КОНФИГУРАЦИЯ =====
             const CONFIG = {
-                TEXTS: ["ОБЛАКО", "ДОКУМЕНТ", "ПАПКА", "ФАЙЛ", "ДАННЫЕ"],
-                PARTICLE_COUNT: 2200,
+                TEXTS: ["ПЕРЕНЕСУ", "ОТЛОЖУ", "ОСТАВЛЮ НА ПОТОМ", "ЕСТЬ ВРЕМЯ", "В СЛЕДУЮЩИЙ РАЗ", "НИКОГДА", "ОТЛОЖУ ДО УТРА", "ПОДОЖДЁМ ПОНЕДЕЛЬНИКА", "ПОЖИВУ С ЭТИМ", "ПЕРЕНЕСУ НА ЗАВТРА", "ОТЛОЖУ НА БУДУЩЕЕ", "ВРЕМЯ ПОДОЖДЁТ", "СДЕЛАЮ ПОЗЖЕ", "ОТКЛАДЫВАЮ", "ЗАФИКСИРУЮ НА ПОТОМ", "ПЕРЕНЕСУ НА ДРУГОЙ ДЕНЬ", "В ДРУГОЙ МОМЕНТ", "В СЛЕДУЮЩИЙ ЭТАП", "НА БОЛЕЕ ПОЗДНИЙ СРОК", "ОТЛОЖУ НА ЗАВТРА", "НЕ СЕЙЧАС", "ОТЛОЖУ ДО СЛЕДУЮЩЕЙ ЖИЗНИ", "ОСТАВЛЮ НА ДРУГОЙ РАЗ", "СДЕЛАЮ ПОСЛЕ", "ВЫПОЛНЮ ПОЗЖЕ", "СДЕЛАЮ ПРИ ВСТРЕЧЕ", "ВЕРНУСЬ ПОЗЖЕ", "ПЕРЕНЕСУ НА ДРУГОЕ ВРЕМЯ", "В СЛЕДУЮЩИЙ ДЕНЬ", "СЛЕДУЮЩИЙ МОМЕНТ", "ВТОРОЙ ШАНС", "НА ВЫХОДНЫЕ", "ОТЛОЖУ ДО ПОНЕДЕЛЬНИКА", "ОТЛОЖУ НА ПОТОМ", "ПОЗЖЕ", "НЕ МЕСТО", "ЭТО НЕВОЗМОЖНО", "Я НЕ СМОГУ", "СДЕЛАЮ КОГДА БУДЕТ ВРЕМЯ", "ВОЗМОЖНОСТЬ", "ПЕРЕНЕСУ НА ПОЗЖЕ", "ПОТОМ", "В ДРУГОЙ ДЕНЬ", "НА СЛЕДУЮЩЕЙ НЕДЕЛЕ", "В ДРУГОЙ РАЗ", "ПОДОЖДУ С ЭТИМ", "ЗАБРОШУ НА ВРЕМЯ", "ОТЛОЖУ", "СДЕЛАЮ", "ПЕРЕНЕСУ НА УДОБНЫЙ", "В ДРУГОЙ РАЗ", "ПОЗЖЕ РЕШУ", "ПОСЛЕ ОПРЕДЕЛЁННОГО СРОКА", "ПОКА НЕ ПРИСТУПЛЮ", "ДАМ ВРЕМЯ", "ЖДУ МОМЕНТ", "СДЕЛАЮ КОГДА-НИБУДЬ", "КОГДА НАСТАНЕТ ВРЕМЯ", "ПОСЛЕ ОТДЫХА", "ВОЗЬМУСЬ ПОСЛЕ", "ОТЛОЖУ ДЛЯ ПЕРЕРЫВА", "СЛЕДУЮЩИЙ ЦИКЛ", "ОТЛОЖУ ДО СТАРТА", "ОТЛОЖУ НА ПАУЗУ"],
+                PARTICLE_COUNT: 2800,
                 PAPER_COUNT: 10,
-                SPHERE_RADIUS: 240,
+                SPHERE_RADIUS: 200,
                 TEXT_SIZE: 50,
                 LERP_SPEED: 0.07,
                 VIDEO_DELAY: 3000,
@@ -68,7 +68,7 @@
                 VIDEO_FADE_IN_DURATION: 1.5,
                 VIDEO_FADE_OUT_DURATION: 1.5,
                 VIDEO_FADE_DELAY: 300,
-                POINTS_PER_PIXEL: 0.5, // Увеличено для более плотного заполнения
+                POINTS_PER_PIXEL: 1.5,
                 WEBCAM_FADE_IN_DURATION: 1500,
                 WEBCAM_FADE_OUT_DURATION: 1500,
                 TEXT_COLOR: '#ffffff',
@@ -78,6 +78,7 @@
             // ===== СОСТОЯНИЕ ПРИЛОЖЕНИЯ =====
             const state = {
                 currentTextIndex: 0,
+                lastTextIndex: -1,
                 isMouseDown: false,
                 videoTimeout: null,
                 webcamTimeout: null,
@@ -92,7 +93,7 @@
             // ===== THREE.JS ОБЪЕКТЫ =====
             const scene = new THREE.Scene();
             const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 5000);
-            camera.position.z = 320;
+            camera.position.z = 300;
             
             const renderer = new THREE.WebGLRenderer({
                 canvas: document.getElementById('canvas'),
@@ -176,12 +177,13 @@
                 geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
                 
                 const material = new THREE.PointsMaterial({
-                    color: 0xFFFFFF,
-                    size: 2,
-                    sizeAttenuation: true,
-                    transparent: true,
-                    opacity: 0.8,
-                    blending: THREE.AdditiveBlending
+                color: 0xFFFFFF,
+                size: 2,
+                sizeAttenuation: true,
+                transparent: true,
+                opacity: 0.8,
+                blending: THREE.AdditiveBlending,
+                fog: false 
                 });
                 
                 particles = new THREE.Points(geometry, material);
@@ -348,7 +350,7 @@
                 
                 // Собираем все точки текста
                 const imageData = textCtx.getImageData(0, 0, textCanvas.width, textCanvas.height);
-                const data = imageData.data;
+                const data = new Uint8Array(imageData.data.buffer);
                 const points = [];
                 
                 // Собираем все белые пиксели
@@ -466,36 +468,43 @@
             }
 
             function moveToText() {
-                const positions = particles.geometry.attributes.position.array;
-                
-                if (state.textPoints.length === 0) {
-                    state.textPoints = generateTextPoints(CONFIG.TEXTS[state.currentTextIndex], CONFIG.TEXT_SIZE);
-                    state.currentTextIndex = (state.currentTextIndex + 1) % CONFIG.TEXTS.length;
-                    
-                    if (state.textPoints.length > 0) {
-                        // Равномерно распределяем частицы по точкам текста
-                        state.particleTargets = [];
-                        for (let i = 0; i < CONFIG.PARTICLE_COUNT; i++) {
-                            const targetIndex = i % state.textPoints.length;
-                            state.particleTargets.push(state.textPoints[targetIndex]);
-                        }
-                    }
-                }
-                
-                for (let i = 0; i < CONFIG.PARTICLE_COUNT; i++) {
-                    const i3 = i * 3;
-                    const target = state.particleTargets[i];
-                    
-                    if (target) {
-                        positions[i3] += (target.x - positions[i3]) * CONFIG.LERP_SPEED;
-                        positions[i3 + 1] += (target.y - positions[i3 + 1]) * CONFIG.LERP_SPEED;
-                        positions[i3 + 2] += (target.z - positions[i3 + 2]) * CONFIG.LERP_SPEED;
-                    }
-                }
-                
-                particles.geometry.attributes.position.needsUpdate = true;
-                startVideo();
+    const positions = particles.geometry.attributes.position.array;
+    
+    if (state.textPoints.length === 0) {
+        // Выбираем случайное слово, отличное от предыдущего
+        let newIndex;
+        do {
+            newIndex = Math.floor(Math.random() * CONFIG.TEXTS.length);
+        } while (CONFIG.TEXTS.length > 1 && newIndex === state.lastTextIndex);
+        
+        state.lastTextIndex = state.currentTextIndex;
+        state.currentTextIndex = newIndex;
+        
+        state.textPoints = generateTextPoints(CONFIG.TEXTS[state.currentTextIndex], CONFIG.TEXT_SIZE);
+        
+        if (state.textPoints.length > 0) {
+            state.particleTargets = [];
+            for (let i = 0; i < CONFIG.PARTICLE_COUNT; i++) {
+                const targetIndex = i % state.textPoints.length;
+                state.particleTargets.push(state.textPoints[targetIndex]);
             }
+        }
+    }
+    
+    for (let i = 0; i < CONFIG.PARTICLE_COUNT; i++) {
+        const i3 = i * 3;
+        const target = state.particleTargets[i];
+        
+        if (target) {
+            positions[i3] += (target.x - positions[i3]) * CONFIG.LERP_SPEED;
+            positions[i3 + 1] += (target.y - positions[i3 + 1]) * CONFIG.LERP_SPEED;
+            positions[i3 + 2] += (target.z - positions[i3 + 2]) * CONFIG.LERP_SPEED;
+        }
+    }
+    
+    particles.geometry.attributes.position.needsUpdate = true;
+    startVideo();
+}
 
             function returnToInitialState() {
                 const positions = particles.geometry.attributes.position.array;
