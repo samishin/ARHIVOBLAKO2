@@ -2,12 +2,13 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Архив Облако (прозрачный фон)</title>
+    <title>Архив Облако</title>
     <style>
         body {
             margin: 0;
             overflow: hidden;
-            background: radial-gradient(circle at center, #3d3b3a 0%, #03000f 70%);
+            cursor: none;
+            background: radial-gradient(circle at center, #636262 0%, #03000f 70%);
         }
         canvas { 
             display: block; 
@@ -26,12 +27,6 @@
             pointer-events: none;
             display: none;
         }
-        #stats {
-            position: absolute;
-            top: 0;
-            left: 0;
-            z-index: 100;
-        }
         #textCanvas {
             display: none;
             position: absolute;
@@ -42,33 +37,34 @@
     <canvas id="canvas"></canvas>
     <canvas id="textCanvas"></canvas>
     <video id="video" muted crossorigin="anonymous" preload="auto">
-        <source src="https://2061d69f-2e4b-4fcf-92cd-e3ece77c04a5.selstorage.ru/Alsu-kouki-amri/ARHIV%20OBLAKO/Google-earth.webm" type="video/webm">
+        <source src="https://2061d69f-2e4b-4fcf-92cd-e3ece77c04a5.selstorage.ru/Alsu-kouki-amri/ARHIV%20OBLAKO/Eath_Arhiv.mp4" type="video/mp4">
     </video>
     <video id="webcam" autoplay muted playsinline></video>
-    <div id="stats"></div>
+    <audio id="bgMusic" loop preload="auto">
+    <source src="kosmos-atmosfera-ujasa-29405.mp3" type="audio/mp3">
+    </audio>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="stats.min.js"></script>
     <script>
         (function() {
             // ===== КОНФИГУРАЦИЯ =====
             const CONFIG = {
                 TEXTS: ["ПЕРЕНЕСУ", "ОТЛОЖУ", "ОСТАВЛЮ НА ПОТОМ", "ЕСТЬ ВРЕМЯ", "В СЛЕДУЮЩИЙ РАЗ", "НИКОГДА", "ОТЛОЖУ ДО УТРА", "ПОДОЖДЁМ ПОНЕДЕЛЬНИКА", "ПОЖИВУ С ЭТИМ", "ПЕРЕНЕСУ НА ЗАВТРА", "ОТЛОЖУ НА БУДУЩЕЕ", "ВРЕМЯ ПОДОЖДЁТ", "СДЕЛАЮ ПОЗЖЕ", "ОТКЛАДЫВАЮ", "ЗАФИКСИРУЮ НА ПОТОМ", "ПЕРЕНЕСУ НА ДРУГОЙ ДЕНЬ", "В ДРУГОЙ МОМЕНТ", "В СЛЕДУЮЩИЙ ЭТАП", "НА БОЛЕЕ ПОЗДНИЙ СРОК", "ОТЛОЖУ НА ЗАВТРА", "НЕ СЕЙЧАС", "ОТЛОЖУ ДО СЛЕДУЮЩЕЙ ЖИЗНИ", "ОСТАВЛЮ НА ДРУГОЙ РАЗ", "СДЕЛАЮ ПОСЛЕ", "ВЫПОЛНЮ ПОЗЖЕ", "СДЕЛАЮ ПРИ ВСТРЕЧЕ", "ВЕРНУСЬ ПОЗЖЕ", "ПЕРЕНЕСУ НА ДРУГОЕ ВРЕМЯ", "В СЛЕДУЮЩИЙ ДЕНЬ", "СЛЕДУЮЩИЙ МОМЕНТ", "ВТОРОЙ ШАНС", "НА ВЫХОДНЫЕ", "ОТЛОЖУ ДО ПОНЕДЕЛЬНИКА", "ОТЛОЖУ НА ПОТОМ", "ПОЗЖЕ", "НЕ МЕСТО", "ЭТО НЕВОЗМОЖНО", "Я НЕ СМОГУ", "СДЕЛАЮ КОГДА БУДЕТ ВРЕМЯ", "ВОЗМОЖНОСТЬ", "ПЕРЕНЕСУ НА ПОЗЖЕ", "ПОТОМ", "В ДРУГОЙ ДЕНЬ", "НА СЛЕДУЮЩЕЙ НЕДЕЛЕ", "В ДРУГОЙ РАЗ", "ПОДОЖДУ С ЭТИМ", "ЗАБРОШУ НА ВРЕМЯ", "ОТЛОЖУ", "СДЕЛАЮ", "ПЕРЕНЕСУ НА УДОБНЫЙ", "В ДРУГОЙ РАЗ", "ПОЗЖЕ РЕШУ", "ПОСЛЕ ОПРЕДЕЛЁННОГО СРОКА", "ПОКА НЕ ПРИСТУПЛЮ", "ДАМ ВРЕМЯ", "ЖДУ МОМЕНТ", "СДЕЛАЮ КОГДА-НИБУДЬ", "КОГДА НАСТАНЕТ ВРЕМЯ", "ПОСЛЕ ОТДЫХА", "ВОЗЬМУСЬ ПОСЛЕ", "ОТЛОЖУ ДЛЯ ПЕРЕРЫВА", "СЛЕДУЮЩИЙ ЦИКЛ", "ОТЛОЖУ ДО СТАРТА", "ОТЛОЖУ НА ПАУЗУ"],
-                PARTICLE_COUNT: 2800,
-                PAPER_COUNT: 10,
-                SPHERE_RADIUS: 200,
-                TEXT_SIZE: 50,
-                LERP_SPEED: 0.07,
-                VIDEO_DELAY: 3000,
+                PARTICLE_COUNT: 3200,
+                PAPER_COUNT: 12,
+                SPHERE_RADIUS: 120,
+                TEXT_SIZE: 52,
+                LERP_SPEED: 0.09,
+                VIDEO_DELAY: 4700,
                 PAPER_SPEED: 0.8,
-                SPACE_MOVEMENT: 1.5,
-                PAPER_SCALE: 0.8,
-                GRAVITY_POINTS: 3,
-                PARTICLE_TURBULENCE: 1.32,
+                SPACE_MOVEMENT: 1.85,
+                PAPER_SCALE: 2,
+                GRAVITY_POINTS: 4,
+                PARTICLE_TURBULENCE: 1.7,
                 VIDEO_FADE_IN_DURATION: 1.5,
                 VIDEO_FADE_OUT_DURATION: 1.5,
                 VIDEO_FADE_DELAY: 300,
-                POINTS_PER_PIXEL: 1.5,
+                POINTS_PER_PIXEL: 1,
                 WEBCAM_FADE_IN_DURATION: 1500,
                 WEBCAM_FADE_OUT_DURATION: 1500,
                 TEXT_COLOR: '#ffffff',
@@ -93,7 +89,7 @@
             // ===== THREE.JS ОБЪЕКТЫ =====
             const scene = new THREE.Scene();
             const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 5000);
-            camera.position.z = 300;
+            camera.position.z = 200;
             
             const renderer = new THREE.WebGLRenderer({
                 canvas: document.getElementById('canvas'),
@@ -105,10 +101,6 @@
             renderer.setClearColor(0x000000, 0);
             
             // ===== DOM ЭЛЕМЕНТЫ =====
-            const stats = new Stats();
-            stats.showPanel(0);
-            document.getElementById('stats').appendChild(stats.dom);
-            
             const videoElement = document.getElementById('video');
             const webcamElement = document.getElementById('webcam');
             const textCanvas = document.getElementById('textCanvas');
@@ -177,11 +169,11 @@
                 geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
                 
                 const material = new THREE.PointsMaterial({
-                color: 0xFFFFFF,
-                size: 2,
+                color: 0xF9D0A9,
+                size: 1.5,
                 sizeAttenuation: true,
                 transparent: true,
-                opacity: 0.8,
+                opacity: 1,
                 blending: THREE.AdditiveBlending,
                 fog: false 
                 });
@@ -208,14 +200,14 @@
             // ===== БУМАЖКИ =====
             function createPapers() {
                 const textureLoader = new THREE.TextureLoader();
-                const geometry = new THREE.PlaneGeometry(80, 150);
+                const geometry = new THREE.PlaneGeometry(30, 50);
                 
                 for (let i = 0; i < CONFIG.PAPER_COUNT; i++) {
                     const texture = textureLoader.load(`paper${(i % 8) + 1}.png`);
                     const material = new THREE.MeshBasicMaterial({
                         map: texture,
                         transparent: true,
-                        opacity: 0.8,
+                        opacity: 0.7,
                         side: THREE.DoubleSide
                     });
                     
@@ -333,7 +325,7 @@
                 particles.geometry.attributes.position.needsUpdate = true;
             }
 
-            // ===== УЛУЧШЕННАЯ ГЕНЕРАЦИЯ ТОЧЕК ТЕКСТА =====
+            // ===== ГЕНЕРАЦИЯ ТОЧЕК ТЕКСТА =====
             function generateTextPoints(text, size) {
                 if (!font) return [];
                 
@@ -364,8 +356,8 @@
                             
                             // Масштабируем позицию
                             points.push(new THREE.Vector3(
-                                nx * 300, // Ширина текста
-                                ny * 150, // Высота текста
+                                nx * 220, // Ширина текста
+                                ny * 120, // Высота текста
                                 0
                             ));
                         }
@@ -449,8 +441,6 @@
 
             // ===== АНИМАЦИЯ =====
             function animate() {
-                stats.begin();
-                
                 const delta = state.clock.getDelta();
                 requestAnimationFrame(animate);
                 
@@ -464,47 +454,46 @@
                 }
                 
                 renderer.render(scene, camera);
-                stats.end();
             }
 
             function moveToText() {
-    const positions = particles.geometry.attributes.position.array;
-    
-    if (state.textPoints.length === 0) {
-        // Выбираем случайное слово, отличное от предыдущего
-        let newIndex;
-        do {
-            newIndex = Math.floor(Math.random() * CONFIG.TEXTS.length);
-        } while (CONFIG.TEXTS.length > 1 && newIndex === state.lastTextIndex);
-        
-        state.lastTextIndex = state.currentTextIndex;
-        state.currentTextIndex = newIndex;
-        
-        state.textPoints = generateTextPoints(CONFIG.TEXTS[state.currentTextIndex], CONFIG.TEXT_SIZE);
-        
-        if (state.textPoints.length > 0) {
-            state.particleTargets = [];
-            for (let i = 0; i < CONFIG.PARTICLE_COUNT; i++) {
-                const targetIndex = i % state.textPoints.length;
-                state.particleTargets.push(state.textPoints[targetIndex]);
+                const positions = particles.geometry.attributes.position.array;
+                
+                if (state.textPoints.length === 0) {
+                    // Выбираем случайное слово, отличное от предыдущего
+                    let newIndex;
+                    do {
+                        newIndex = Math.floor(Math.random() * CONFIG.TEXTS.length);
+                    } while (CONFIG.TEXTS.length > 1 && newIndex === state.lastTextIndex);
+                    
+                    state.lastTextIndex = state.currentTextIndex;
+                    state.currentTextIndex = newIndex;
+                    
+                    state.textPoints = generateTextPoints(CONFIG.TEXTS[state.currentTextIndex], CONFIG.TEXT_SIZE);
+                    
+                    if (state.textPoints.length > 0) {
+                        state.particleTargets = [];
+                        for (let i = 0; i < CONFIG.PARTICLE_COUNT; i++) {
+                            const targetIndex = i % state.textPoints.length;
+                            state.particleTargets.push(state.textPoints[targetIndex]);
+                        }
+                    }
+                }
+                
+                for (let i = 0; i < CONFIG.PARTICLE_COUNT; i++) {
+                    const i3 = i * 3;
+                    const target = state.particleTargets[i];
+                    
+                    if (target) {
+                        positions[i3] += (target.x - positions[i3]) * CONFIG.LERP_SPEED;
+                        positions[i3 + 1] += (target.y - positions[i3 + 1]) * CONFIG.LERP_SPEED;
+                        positions[i3 + 2] += (target.z - positions[i3 + 2]) * CONFIG.LERP_SPEED;
+                    }
+                }
+                
+                particles.geometry.attributes.position.needsUpdate = true;
+                startVideo();
             }
-        }
-    }
-    
-    for (let i = 0; i < CONFIG.PARTICLE_COUNT; i++) {
-        const i3 = i * 3;
-        const target = state.particleTargets[i];
-        
-        if (target) {
-            positions[i3] += (target.x - positions[i3]) * CONFIG.LERP_SPEED;
-            positions[i3 + 1] += (target.y - positions[i3 + 1]) * CONFIG.LERP_SPEED;
-            positions[i3 + 2] += (target.z - positions[i3 + 2]) * CONFIG.LERP_SPEED;
-        }
-    }
-    
-    particles.geometry.attributes.position.needsUpdate = true;
-    startVideo();
-}
 
             function returnToInitialState() {
                 const positions = particles.geometry.attributes.position.array;
@@ -525,6 +514,42 @@
             }
 
             // ===== СОБЫТИЯ =====
+            function onWindowResize() {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                
+                // Также обновляем размер текстового canvas
+                textCanvas.width = state.textRenderSize;
+                textCanvas.height = state.textRenderSize;
+            }
+
+            function toggleFullscreen() {
+                if (!document.fullscreenElement) {
+                    document.documentElement.requestFullscreen().catch(err => {
+                        console.error(`Ошибка при переходе в полноэкранный режим: ${err.message}`);
+                    });
+                } else {
+                    if (document.exitFullscreen) {
+                        document.exitFullscreen();
+                    }
+                }
+            }
+
+            function keyPressed(event) {
+                if (event.keyCode === 32) { // Пробел
+                    toggleFullscreen();
+                    event.preventDefault();
+                    return false;
+                }
+                
+                if (event.keyCode === 70) { // F
+                    location.reload();
+                    event.preventDefault();
+                    return false;
+                }
+            }
+
             function setupEventListeners() {
                 window.addEventListener('resize', onWindowResize);
                 
@@ -537,13 +562,48 @@
                 document.addEventListener('mouseup', () => setMouseState(false));
                 document.addEventListener('touchstart', () => setMouseState(true), { passive: true });
                 document.addEventListener('touchend', () => setMouseState(false), { passive: true });
+                
+                // Добавляем обработчики клавиатуры
+                document.addEventListener('keydown', keyPressed);
             }
 
-            function onWindowResize() {
-                camera.aspect = window.innerWidth / window.innerHeight;
-                camera.updateProjectionMatrix();
-                renderer.setSize(window.innerWidth, window.innerHeight);
+            // ===== ФОНОВЫЙ ЗВУК С ПРЕДЗАГРУЗКОЙ =====
+            const bgMusic = document.getElementById('bgMusic');
+            bgMusic.volume = 0.3;
+
+            // Предзагрузка при инициализации
+            function preloadAudio() {
+                bgMusic.load(); // Принудительная загрузка
+                
+                // Хак для iOS: создаем небольшой буфер
+                if (/iPhone|iPad/i.test(navigator.userAgent)) {
+                    bgMusic.play().then(() => {
+                        bgMusic.pause();
+                        bgMusic.currentTime = 0;
+                    }).catch(e => {});
+                }
             }
+
+            // Автовоспроизведение при первом взаимодействии
+            function initAudio() {
+                bgMusic.play().catch(e => {});
+                document.removeEventListener('click', initAudio);
+                document.removeEventListener('touchstart', initAudio);
+            }
+
+            // Инициализация
+            window.addEventListener('DOMContentLoaded', () => {
+                preloadAudio();
+                
+                // Вешаем обработчики на все возможные события взаимодействия
+                const events = ['click', 'touchstart', 'keydown', 'mousedown'];
+                events.forEach(ev => {
+                    document.addEventListener(ev, initAudio, { once: true });
+                });
+                
+                // Попытка автовоспроизведения (работает в некоторых браузерах)
+                setTimeout(() => bgMusic.play().catch(e => {}), 1000);
+            });
 
             // ===== ЗАГРУЗКА ШРИФТА =====
             async function loadFont() {
